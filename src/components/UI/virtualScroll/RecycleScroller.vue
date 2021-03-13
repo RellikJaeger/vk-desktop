@@ -119,7 +119,9 @@ export default {
       views: new Map(),
       unusedViews: new Map(),
       lastUpdateScrollPosition: 0,
-      computedMinItemSize: 0
+      computedMinItemSize: 0,
+      continuous: null,
+      refreshTimout: null
     });
 
     return state;
@@ -228,8 +230,8 @@ export default {
         // It seems sometimes chrome doesn't fire scroll event :/
         // When non continous scrolling is ending, we force a refresh
         if (!continuous) {
-          clearTimeout(this.$_refreshTimout);
-          this.$_refreshTimout = setTimeout(this.onScroll.bind(this, event), 100);
+          clearTimeout(this.refreshTimout);
+          this.refreshTimout = setTimeout(this.onScroll.bind(this, event), 100);
         }
       });
     },
@@ -335,7 +337,7 @@ export default {
       const continuous = startIndex <= this.endIndex && endIndex >= this.startIndex;
       let view;
 
-      if (this.$_continuous !== continuous) {
+      if (this.continuous !== continuous) {
         if (continuous) {
           views.clear();
           unusedViews.clear();
@@ -345,7 +347,7 @@ export default {
           }
         }
 
-        this.$_continuous = continuous;
+        this.continuous = continuous;
       } else if (continuous) {
         for (let i = 0, l = pool.length; i < l; i++) {
           view = pool[i];

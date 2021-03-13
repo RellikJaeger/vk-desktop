@@ -107,7 +107,7 @@ export default {
         state.loading = false;
         stop();
         await nextTick();
-        onScroll(state.scrolly);
+        onScroll(state.recycleScroller.$refs.scrollyRef);
       });
 
       setInterval(() => {
