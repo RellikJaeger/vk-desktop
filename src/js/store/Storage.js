@@ -36,6 +36,9 @@ export const defaultUserSettings = {
 
   showAvatarAtBottom: false,
   useLightMessageColors: false,
+  animateStickersOnFirstAppear: true,
+  useNativeEmoji: false,
+
   showObjectIds: false
 };
 

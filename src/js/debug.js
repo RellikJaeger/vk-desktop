@@ -28,7 +28,7 @@ export default function debug(...textChunks) {
 
 const errorCache = new Set();
 
-async function showError(error) {
+export async function showError(error) {
   let type = error.type === 'error' ? 'UncaughtError' : 'UnhandledRejection';
   let message;
 
@@ -109,29 +109,8 @@ function getLibraryDefaultDir() {
 
 function getUserData() {
   if (app.name !== appName) {
-    return path.join(getAppData(), appName);
+    return path.join(app.getPath('appData'), appName);
   }
 
-  return app.getPath('userData') || path.join(getAppData(), appName);
-}
-
-function getAppData() {
-  const appData = app.getPath('appData');
-
-  if (appData) {
-    return appData;
-  }
-
-  const home = os.homedir();
-
-  switch (process.platform) {
-    case 'darwin':
-      return path.join(home, 'Library/Application Support');
-
-    case 'win32':
-      return process.env.APPDATA || path.join(home, 'AppData/Roaming');
-
-    default:
-      return process.env.XDG_CONFIG_HOME || path.join(home, '.config');
-  }
+  return app.getPath('userData') || path.join(app.getPath('appData'), appName);
 }

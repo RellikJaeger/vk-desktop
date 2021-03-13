@@ -174,6 +174,8 @@ export default {
   im_open_comment: 'Открыть комментарий',
   im_open_wall: 'Открыть запись',
 
+  im_deleted_comment: 'Комментарий удалён пользователем или руководителем страницы',
+
   // Сервисные сообщения
   // Все {0} и {1} в дальнейшем оборачиваются в <b></b>
   im_chat_photo_update: [
@@ -316,6 +318,8 @@ export default {
   ml_settings_options: {
     show_avatar_at_bottom: 'Отображать аватарку автора сообщения снизу',
     use_light_message_colors: 'Использовать более светлые тона для сообщений',
+    animate_stickers_on_first_appear: 'Анимировать стикеры при первом появлении',
+    use_native_emoji: 'Использовать системные эмодзи',
 
     show_object_ids: 'Отображать id бесед и сообщений в контекстном меню'
   }

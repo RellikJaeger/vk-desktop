@@ -178,7 +178,6 @@ export default {
 
       const updateMethod = state.route.name === 'chat' ? 'replace' : 'push';
 
-      store.state.lockNextScrollyRender = true;
       await router[updateMethod]({
         name: 'chat',
         params: {
@@ -334,6 +333,7 @@ export default {
 
 .im_peer_text_wrap div {
   display: inline;
+  line-height: 18px;
 }
 
 .im_peer_author:not(:empty) {

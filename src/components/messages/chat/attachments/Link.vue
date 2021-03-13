@@ -1,11 +1,18 @@
 <template>
-  <div :class="['attach_link', { horizontalPhoto, hasButton: !!button }]" @click="openPage(url)">
-    <img v-if="photo" :src="photo">
+  <div v-if="photo" :class="['attach_link', { horizontalPhoto, hasButton: !!button }]">
+    <img v-if="horizontalPhoto" :src="photo">
+    <span v-else :style="{ backgroundImage: `url(${photo})` }"></span>
     <div class="attach_link_content">
-      <div class="attach_link_content_title">{{ title }}</div>
+      <div class="attach_link_content_title" @click="openPage(url)">{{ title }}</div>
       <div v-if="caption" class="attach_link_content_caption">{{ caption }}</div>
 
       <Button v-if="button" @click="openPage(button.action.url)">{{ button.title }}</Button>
+    </div>
+  </div>
+  <div v-else class="attach_link -short attach_left_border" @click="openPage(url)">
+    <div class="attach_link_content">
+      <div class="attach_link_content_title">{{ title }}</div>
+      <div v-if="caption" class="attach_link_content_caption">{{ caption }}</div>
     </div>
   </div>
 </template>
@@ -47,10 +54,19 @@ export default {
 <style>
 .attach_link {
   display: flex;
+}
+
+.attach_link:not(.-short) {
   background-color: var(--background);
   border: 1px solid var(--separator-dark);
   border-radius: 10px;
   overflow: hidden;
+  min-height: 70px;
+}
+
+.attach_link.-short {
+  position: relative;
+  padding-left: 10px;
   cursor: pointer;
 }
 
@@ -58,26 +74,28 @@ export default {
   flex-direction: column;
 }
 
-.attach_link img {
-  object-fit: cover;
-}
-
-.attach_link:not(.horizontalPhoto) img {
-  min-width: 100px;
-  max-height: 100px;
+.attach_link span {
+  background-position: 50% 50%;
+  background-size: cover;
+  background-repeat: no-repeat;
+  min-height: 95px;
+  width: 110px;
+  flex: none;
   border-right: 1px solid var(--separator-dark);
 }
 
 .attach_link.horizontalPhoto img {
-  width: 100%;
-  max-height: 200px;
+  height: 200px;
+  object-fit: cover;
   border-bottom: 1px solid var(--separator-dark);
 }
 
-.attach_link_content {
+.attach_link:not(.-short) .attach_link_content {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   margin: 10px;
+  user-select: text;
 }
 
 .attach_link_content_title,
@@ -91,9 +109,11 @@ export default {
   -webkit-line-clamp: 3;
   color: var(--text-blue);
   font-weight: 500;
+  cursor: pointer;
 }
 
-.hasButton .attach_link_content_title {
+.hasButton .attach_link_content_title,
+.attach_link.-short .attach_link_content_title {
   -webkit-line-clamp: 1;
 }
 
@@ -102,6 +122,10 @@ export default {
   color: var(--text-dark-steel-gray);
   margin-top: 5px;
   font-size: 14px;
+}
+
+.attach_link.-short .attach_link_content_caption {
+  margin-top: 2px;
 }
 
 .attach_link.horizontalPhoto .attach_link_content_caption {

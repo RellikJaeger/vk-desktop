@@ -43,7 +43,10 @@ export default {
         }
       } else if (component) {
         attachments.push(
-          h(component, { attach })
+          h(component, {
+            key: attach,
+            attach
+          })
         );
       } else {
         attachments.push(
@@ -54,6 +57,8 @@ export default {
 
     if (Object.keys(layoutAttachs).length) {
       attachments.unshift(
+        // key не нужен, так как содержимое автоматически обновляется
+        // используя render-функции
         h(components.photosLayout, {
           attachments: layoutAttachs
         })
@@ -63,7 +68,10 @@ export default {
     if (documentAttachs.length) {
       attachments.push(
         ...documentAttachs.map((attach) => (
-          h(components.doc, { attach })
+          h(components.doc, {
+            key: attach,
+            attach
+          })
         ))
       );
     }
@@ -93,16 +101,23 @@ export default {
 }
 
 .message:not(.hasForward) .message_bubble_content > .im_attachments > .im_attach_unknown:last-child,
-.message:not(.hasForward) .message_bubble_content > .im_attachments > .attach_doc {
+.message:not(.hasForward) .message_bubble_content > .im_attachments > .attach_doc:last-child,
+.message:not(.hasForward) .message_bubble_content > .im_attachments > .attach_link.-short:last-child {
   /* Убираем слишком большой отступ от конца сообщения */
   margin-bottom: -5px;
 }
 
+/* stylelint-disable selector-combinator-space-before */
+
 .message.hasPhoto .message_bubble_content > .attach_forwarded,
-.message.hasPhoto .message_bubble_content > .im_attachments > div:not(.attach_photos_wrap) {
+
+.message.hasPhoto .message_bubble_content > .im_attachments
+> div:not(.attach_photos_wrap):not(.attach_link:not(.-short)) {
   margin-left: 5px;
   margin-right: 5px;
 }
+
+/* stylelint-enable selector-combinator-space-before */
 
 .attach_left_border::before {
   content: '';

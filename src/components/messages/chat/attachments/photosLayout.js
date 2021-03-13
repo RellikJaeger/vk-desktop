@@ -22,8 +22,6 @@ function updateThumb(thumb, width, height, lastColumn, lastRow, columnItem) {
 }
 
 function calcOnePhotoSize(photo, ratios, maxWidth, maxHeight) {
-  const minPhotoWidth = 50;
-
   if (photo.height < 50) {
     photo.height = 50;
     photo.width = 50 * ratios[0];
@@ -34,9 +32,9 @@ function calcOnePhotoSize(photo, ratios, maxWidth, maxHeight) {
     photo.width = maxHeight * ratios[0];
   }
 
-  if (photo.width < minPhotoWidth) {
-    photo.width = minPhotoWidth;
-    photo.height = minPhotoWidth / ratios[0];
+  if (photo.width < 50) {
+    photo.width = 50;
+    photo.height = 50 / ratios[0];
   }
 
   if (photo.width > maxWidth) {
@@ -110,6 +108,11 @@ export function calculatePhotosLayout({ thumbs, margin, maxWidth, maxHeight }) {
   let photoRatioSum = 0;
 
   for (const thumb of thumbs) {
+    if (thumb.width === 0 && thumb.height === 0) {
+      thumb.width = 100;
+      thumb.height = 100;
+    }
+
     const ratio = Math.max(thumb.width / thumb.height, .3);
 
     photoRatioTypes += ratio > 1.2 ? 'w' : (ratio < .8 ? 'n' : 'q');
@@ -240,7 +243,7 @@ export function calculatePhotosLayout({ thumbs, margin, maxWidth, maxHeight }) {
       const height3 = heightModifier / photoRatios[2];
       const height4 = heightModifier / photoRatios[3];
       const width1 = Math.min(height1 * photoRatios[0], (maxWidth - margin) * (2 / 3));
-      const width2 = Math.min(maxWidth - width1 - margin, heightModifier);
+      const width2 = Math.min(maxWidth - width1 - margin, Math.max(heightModifier, 65));
 
       updateThumb(t0, width1, height1, false, true);
       updateThumb(t1, width2, height2, true, false, true);
@@ -278,6 +281,7 @@ export function calculatePhotosLayout({ thumbs, margin, maxWidth, maxHeight }) {
     let optimalPhotosLayout = null;
     let minHeightDiff = 0;
     let reservedMaxWidthAndLayout = [];
+    const minPhotoWidth = 65;
 
     for (const key in photosLayoutVariants) {
       const photosHeight = photosLayoutVariants[key];
@@ -295,7 +299,7 @@ export function calculatePhotosLayout({ thumbs, margin, maxWidth, maxHeight }) {
         for (let column = 0; column < photosInRows[row]; column++) {
           const width = photoRatios[index++] * photosHeight[row];
 
-          if (width < 50) {
+          if (width < minPhotoWidth) {
             const [prevWidth] = reservedMaxWidthAndLayout;
 
             if (!prevWidth || width > prevWidth) {

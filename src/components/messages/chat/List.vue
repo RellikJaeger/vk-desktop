@@ -48,7 +48,7 @@
 </template>
 
 <script>
-import { reactive, computed, onActivated, nextTick, toRefs } from 'vue';
+import { reactive, computed, onActivated, nextTick, toRefs, provide } from 'vue';
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
 import {
   createQueueManager,
@@ -96,7 +96,7 @@ export default {
 
       isScrolledDownOnClose: false,
       isUnreadOnClose: false,
-      savePositionOnOpen: null,
+      savedPositionBeforeClose: null,
 
       topTime: null,
       showTopTime: false,
@@ -116,6 +116,22 @@ export default {
       hasMessages: computed(() => !!state.messagesWithLoading.length)
     });
 
+    const intersectionObserver = (() => {
+      const callbacks = new Set();
+
+      const addCallback = (cb) => callbacks.add(cb);
+      const removeCallback = (cb) => callbacks.delete(cb);
+
+      const observer = new IntersectionObserver(
+        (...args) => callbacks.forEach((cb) => cb(...args)),
+        { root: state.list, threshold: .5 }
+      );
+
+      return { observer, addCallback, removeCallback };
+    })();
+
+    provide('intersectionObserver', intersectionObserver);
+
     // Event listener =====================================
 
     function saveScrollData() {
@@ -128,7 +144,7 @@ export default {
 
       // Сообщения еще загружаются, но пользователь уже вышел из беседы
       if (state.loadingUp) {
-        state.savePositionOnOpen = { scrollTop, scrollHeight };
+        state.savedPositionBeforeClose = { scrollTop, scrollHeight };
       }
     }
 
@@ -138,6 +154,8 @@ export default {
     onBeforeRouteUpdate(saveScrollData);
 
     onActivated(() => {
+      store.state.lockNextScrollyRender = true;
+
       state.startInRead = props.peer && props.peer.in_read;
 
       // Первый запуск, вместо onMounted
@@ -148,12 +166,11 @@ export default {
       }
 
       // Сохраняем позицию после закрытия беседы до загрузки сообщений
-      if (state.savePositionOnOpen) {
-        const { scrollTop, scrollHeight } = state.savePositionOnOpen;
+      if (state.savedPositionBeforeClose) {
+        const { scrollTop, scrollHeight } = state.savedPositionBeforeClose;
 
-        state.list.scrollTop = state.list.scrollHeight - scrollHeight + scrollTop;
-        state.scrollTop = state.list.scrollTop;
-        state.savePositionOnOpen = null;
+        state.scrollTop = state.list.scrollHeight - scrollHeight + scrollTop;
+        state.savedPositionBeforeClose = null;
       }
 
       const unread = state.list.querySelector('.message_unreaded_messages');

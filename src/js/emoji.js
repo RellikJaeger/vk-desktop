@@ -36,7 +36,7 @@ function parseLocalEmoji(data) {
   return data.split('|').map((n) => {
     const nums = [
       288, 0, 5, 128, 7, 6, 160, 64, 96, 208, 112, 80, 16,
-      192, 48, 4, 176, 32, 224, 144, 256, 240, 2, 1, 3, 8
+      192, 48, 4, 176, 32, 224, 144, 256, 240, 2, 1, 3, 8, 9
     ];
 
     return n === '' ? 272 : nums[n];
@@ -53,7 +53,7 @@ function getEmojiAndStyle(emoji) {
     const isRetina = devicePixelRatio > 1;
     const x2 = isRetina ? '_2x' : '';
     const pos = isRetina ? `/ ${posX}px ${posY}px` : '';
-
+    // console.log([id, x, y, posX, posY]);
     style = `background: url('assets/emoji_sprites/sprite_${id}${x2}.webp') -${x}px -${y}px ${pos}`;
   }
 
