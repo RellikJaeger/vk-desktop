@@ -1,8 +1,7 @@
 <template>
   <Scrolly
     ref="scrollyRef"
-    :class="scrollyClass"
-    :vclass="scrollyVClass"
+    :vclass="vclass"
     :lock="lock"
     @scroll="onScroll"
   >
@@ -12,24 +11,20 @@
     >
       <div
         ref="wrapper"
-        :style="{ minHeight: totalSize + 'px' }"
+        :style="{
+          minHeight: totalSize + 'px',
+          transform: `translateY(${0}px)`
+        }"
         class="vue-recycle-scroller__item-wrapper"
       >
-        <div
+        <slot
           v-for="view of pool"
           :key="view.nr.id"
-          :style="{ transform: `translateY(${view.position}px)` }"
-          class="vue-recycle-scroller__item-view"
-          :class="{ hover: hoverKey === view.nr.key }"
-          @mouseenter="hoverKey = view.nr.key"
-          @mouseleave="hoverKey = null"
-        >
-          <slot
-            :item="view.item"
-            :index="view.nr.index"
-            :active="view.nr.used"
-          />
-        </div>
+
+          :item="view.item"
+          :index="view.nr.index"
+          :active="view.nr.used"
+        />
       </div>
     </div>
   </Scrolly>
@@ -88,10 +83,7 @@ export default {
       default: 400
     },
 
-    scrollyClass: {
-      type: [String, Object, Array]
-    },
-    scrollyVClass: {
+    vclass: {
       type: [String, Object, Array]
     },
     lock: {
@@ -474,7 +466,7 @@ export default {
 
 .vue-recycle-scroller .vue-recycle-scroller__item-view {
   position: absolute;
-  will-change: transform;
+  /* will-change: transform; */
 }
 
 .vue-recycle-scroller .vue-recycle-scroller__item-view {

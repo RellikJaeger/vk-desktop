@@ -177,10 +177,10 @@ img:not(.emoji) {
   content: '';
   display: block;
   width: 18px;
-  height: 18px;
-  margin: 10px auto;
+  height: calc(18px + 10px * 2);
+  margin: 0 auto;
   animation: spinner .7s infinite linear;
-  background: url('~assets/spinner.webp') 0 / contain;
+  background: url('~assets/spinner.webp') 0 / contain no-repeat;
 }
 
 .verified {

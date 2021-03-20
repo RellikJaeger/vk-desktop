@@ -10,14 +10,12 @@
     <RecycleScroller
       v-slot="{ item: { peer, msg } }"
       ref="recycleScroller"
-      class="im_peers_scroller"
       :items="peersList"
-      :itemSize="66"
+      :itemHeight="66"
+      :getKey="(item) => item.peer.id"
 
-      keyField="peer.id"
-
-      scrollyClass="im_peers_wrap"
-      :scrollyVClass="{ loading }"
+      class="im_peers_wrap"
+      :vclass="{ loading }"
       :lock="lockScroll"
       @scroll="onScroll"
     >
@@ -43,7 +41,7 @@ import vkapi from 'js/vkapi';
 import store from 'js/store';
 import router from 'js/router';
 
-import { RecycleScroller } from '../UI/virtualScroll';
+import { RecycleScroller } from '../UI/myVirtualScroll';
 import Icon from '../UI/Icon.vue';
 import SearchInput from '../UI/SearchInput.vue';
 import AccountManager from '../menu/AccountManager.vue';
@@ -215,10 +213,5 @@ export default {
   width: 100%;
   overflow-y: auto;
   flex-grow: 1;
-}
-
-.im_peers_scroller {
-  width: 100%;
-  height: 100%;
 }
 </style>
