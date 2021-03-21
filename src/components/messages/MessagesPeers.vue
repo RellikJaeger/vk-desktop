@@ -44,7 +44,7 @@ import vkapi from 'js/vkapi';
 import store from 'js/store';
 import router from 'js/router';
 
-import { RecycleScroller } from '../UI/myVirtualScroll';
+import { RecycleScroller } from '../UI/virtualScroll';
 import Icon from '../UI/Icon.vue';
 import SearchInput from '../UI/SearchInput.vue';
 import AccountManager from '../menu/AccountManager.vue';
