@@ -1,64 +1,6 @@
-// https://blog.codepen.io/2016/06/08/can-adjust-infinite-loop-protection-timing/
-window.CP.PenTimer.MAX_TIME_IN_LOOP_WO_EXIT = 3000;
 const PAGE_SIZE = 50;
-const EMIT_ENABLED = true;
-
-const bus = new Vue({});
 
 // https://dev.to/adamklein/build-your-own-virtual-scroll-part-ii-3j86
-// define a mixin object to check if the browser supports the option passive that can be used while dealing with scroll events
-const PassiveSupportMixin = {
-  methods: {
-    // This snippet is taken straight from https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
-    // It will only work on browser so if you are using in an SSR environment, keep your eyes open
-    doesBrowserSupportPassiveScroll() {
-      let passiveSupported = false;
-
-      try {
-        const options = {
-          get passive() {
-            // This function will be called when the browser
-            //   attempts to access the passive property.
-            passiveSupported = true;
-            return false;
-          }
-        };
-
-        window.addEventListener("test", null, options);
-        window.removeEventListener("test", null, options);
-      } catch (err) {
-        passiveSupported = false;
-      }
-      return passiveSupported;
-    }
-  }
-};
-
-/**
-No need for this in production, just remove the mixin from the component
-*/
-const EmitMixin = {
-  methods: {
-    emit() {
-      bus.$emit("scroll-top", this.scrollTop);
-      bus.$emit("viewport-height", this.viewportHeight);
-      bus.$emit("heights", this.heights);
-      bus.$emit("page-positions", this.rollingPageHeights);
-      bus.$emit("translate-y", this.translateY);
-      bus.$emit("page-start-index", this.pageStartIndex);
-      bus.$emit("start-index", this.startIndex);
-      bus.$emit("end-index", this.endIndex);
-      bus.$emit("smallest-height", this.smallestRowHeight);
-      bus.$emit("largest-height", this.largestRowHeight);
-      bus.$emit("root-height", this.rootHeight);
-      bus.$emit("row-positions", this.rowPositions);
-      bus.$emit(
-        "visible-items",
-        this.visibleItems.map(item => item.index)
-      );
-    }
-  }
-};
 
 const SearchMixin = {
   methods: {
@@ -68,6 +10,7 @@ const SearchMixin = {
         ? arr.length - 1
         : Object.keys(arr).length - 1;
       let mid;
+
       while (low < high) {
         mid = Math.floor((high + low) / 2);
         // Check if x is present at middle position
@@ -79,24 +22,32 @@ const SearchMixin = {
           low = mid + 1;
         }
       }
+
       mid = Math.floor((high + low) / 2);
-      if (x <= arr[mid]) return mid;
-      else return mid + 1;
+
+      return x <= arr[mid]
+        ? mid
+        : mid + 1;
     },
-    /**
-    Given a scroll top value, the map containing id of the each row as key and its vertical position from the top of the viewport in px and the number of total number of items available, find the index of the first node that is just above the current scroll top value or in simple words, find the index of the item that is just not seen by the user and is above the current scroll bar position
-    */
+
+    // Given a scroll top value, the map containing id of the each row as key and its vertical position from the top of
+    // the viewport in px and the number of total number of items available, find the index of the first node that is
+    // just above the current scroll top value or in simple words, find the index of the item that is just not seen by
+    // the user and is above the current scroll bar position
     findStartNode(scrollTop, nodePositions, itemCount) {
       let startRange = 0;
       let endRange = itemCount - 1;
+
       while (endRange !== startRange) {
         const middle = Math.floor((endRange - startRange) / 2 + startRange);
+
         if (
           nodePositions[middle] <= scrollTop &&
           nodePositions[middle + 1] > scrollTop
         ) {
           return middle;
         }
+
         if (middle === startRange) {
           // edge case - start and end range are consecutive
           return endRange;
@@ -108,51 +59,19 @@ const SearchMixin = {
           }
         }
       }
+
       return itemCount;
     }
   }
 };
 
-const DummyDataMixin = {
-  data() {
-    return {
-      minWordCount: 3,
-      maxWordCount: 50
-    };
-  },
-  methods: {
-    dummyData(currentLength) {
-      const items = [];
-      const length = PAGE_SIZE;
-      for (let i = 0; i < length; i++) {
-        const wordCount =
-          this.minWordCount +
-          Math.floor(Math.random() * (this.maxWordCount - this.minWordCount));
-        // For each item we take a UUID, an index and a value
-        // UUID clashes here will be bad
-        items.push({
-          id: faker.random.uuid(),
-          index: currentLength + i,
-          value: "Item " + faker.random.words(wordCount)
-        });
-      }
-      return items;
-    }
-  }
-};
+Vue.component('virtual-list', {
+  template: '#virtual-list',
 
-Vue.component("virtual-list", {
-  template: "#virtual-list",
-  mixins: [DummyDataMixin, SearchMixin, PassiveSupportMixin, EmitMixin],
+  mixins: [SearchMixin],
+
   data() {
     return {
-      // Has the mount() been called yet atleast once?
-      isMounted: false,
-      // Are items currently loading as part of the infinite scroll?, handly if you got AJAX calls
-      loading: false,
-      // Should events corresponding to data changes be emitted from this component?
-      // Disable this in production to cut emitting events
-      emitEnabled: EMIT_ENABLED,
       // Index of the starting page, each page has PAGE_SIZE items
       pageStartIndex: 0,
       // Index of the first list item on DOM
@@ -170,8 +89,6 @@ Vue.component("virtual-list", {
       rollingPageHeights: [],
       // Height of the smallest row
       smallestRowHeight: Number.MAX_SAFE_INTEGER,
-      // Height of the largest row
-      largestRowHeight: Number.MIN_SAFE_INTEGER,
       // How much to shift the spacer vertically so that the scrollbar is not disturbed when hiding items
       translateY: 0,
       // Height of the outermost div inside which all the list items are present
@@ -179,13 +96,10 @@ Vue.component("virtual-list", {
       // Total height of all the rows of all the pages
       viewportHeight: 0,
       // Current scroll position
-      scrollTop: 0,
-      renderAhead: 10,
-
-      // The id of the currently selected item, by default set to 0
-      selectedIndex: 0
+      scrollTop: 0
     };
   },
+
   computed: {
     /**
       If the current page is 0, take a slice of the heights of all rows from index 0 to 49
@@ -218,22 +132,26 @@ Vue.component("virtual-list", {
         this.pageStartIndex * PAGE_SIZE,
         (this.pageStartIndex + 1) * PAGE_SIZE
       );
-      let totalDisplacement =
-        this.rollingPageHeights[this.pageStartIndex - 1] || 0;
+      let totalDisplacement = this.rollingPageHeights[this.pageStartIndex - 1] || 0;
       let displacements = [];
+
       for (let i = 0; i < currentHeights.length; i++) {
         displacements.push(totalDisplacement);
         totalDisplacement += currentHeights[i];
       }
+
       displacements.push(totalDisplacement);
+
       return displacements;
     },
+
     /**
       Subset of list items rendered on the DOM
     */
     visibleItems() {
       return this.items.slice(this.startIndex, this.endIndex);
     },
+
     /**
       Translate the spacer verticaly to keep the scrollbar intact
       We only show N items at a time so the scrollbar would get affected if we dont translate
@@ -244,6 +162,7 @@ Vue.component("virtual-list", {
         transform: "translateY(" + this.translateY + "px)"
       };
     },
+
     /**
       Set the height of the viewport
       For a list where all items are of equal height, height of the viewport = number of items x height of each item
@@ -258,34 +177,22 @@ Vue.component("virtual-list", {
       };
     }
   },
+
   methods: {
     init() {
-      this.isMounted = true;
-      // Insert the dummy data
-      const insertedItems = this.dummyData(this.items.length);
-      this.items.push(...insertedItems);
-
       // Check if browser supports passive scroll and add scroll event listener
       this.$el.addEventListener(
         "scroll",
         this.handleScroll,
-        this.doesBrowserSupportPassiveScroll() ? { passive: true } : false
+        { passive: true }
       );
-
-      window.addEventListener("keydown", this.handleKeyDown);
 
       // After the items are added when they are rendered on DOM, update the heights and other properties
       this.$nextTick(() => {
         this.update(insertedItems);
         // this.update2();
         // Observe one or multiple elements
-        this.emitEnabled && this.emit();
       });
-    },
-    select(itemId) {
-      this.selectedIndex = itemId;
-      // scrollIntoViewIfNeeded(this.$el, this.childPositions[itemId]);
-      // this.$el.children[item.id].scrollIntoView({ behavior: "smooth" });
     },
 
     scrollTo(index) {
@@ -315,44 +222,6 @@ Vue.component("virtual-list", {
       }
     },
 
-    handleKeyDown(event) {
-      switch (event.keyCode) {
-        // In case of left arrow key move to the last item
-        case 37:
-          if (this.selectedIndex > 0) {
-            this.select(this.selectedIndex - 1);
-            this.scrollTo(this.selectedIndex);
-          }
-          // Prevent the default scroll event from firing
-          event.preventDefault();
-          break;
-        // In case of up arrow key, move to the last item
-        case 38:
-          if (this.selectedIndex > 0) {
-            this.select(this.selectedIndex - 1);
-            this.scrollTo(this.selectedIndex);
-          }
-          event.preventDefault();
-          break;
-        // In case of right arrow key, move to the next item
-        case 39:
-          if (this.selectedIndex < this.items.length - 1) {
-            this.select(this.selectedIndex + 1);
-            this.scrollTo(this.selectedIndex);
-          }
-          event.preventDefault();
-          break;
-        // In case of down arrow key, move to the next item
-        case 40:
-          if (this.selectedIndex < this.items.length - 1) {
-            this.select(this.selectedIndex + 1);
-            this.scrollTo(this.selectedIndex);
-          }
-          event.preventDefault();
-          break;
-      }
-    },
-
     update(insertedItems) {
       for (let i = 0; i < insertedItems.length; i++) {
         // Get the id and index of the inserted items from the array
@@ -362,9 +231,7 @@ Vue.component("virtual-list", {
           // Get the scroll height and update the height of the item at index
           const height = this.$refs[id][0].scrollHeight;
           this.heights[index] = height;
-          // Update the largest and smallest row heights
-          this.largestRowHeight =
-            height > this.largestRowHeight ? height : this.largestRowHeight;
+          // Update the smallest row height
           this.smallestRowHeight =
             height < this.smallestRowHeight ? height : this.smallestRowHeight;
           // Given an item index, compute the page index
@@ -401,38 +268,9 @@ Vue.component("virtual-list", {
     handleScroll: _.throttle(function() {
       const { scrollTop, offsetHeight, scrollHeight } = this.$el;
       this.scrollTop = scrollTop;
-      this.emitEnabled && this.emit();
-      if (scrollTop + offsetHeight >= scrollHeight - 10) {
-        this.loadMore();
-      }
-    }, 17),
-    loadMore() {
-      // Mark the loading status
-      this.loading = true;
-      setTimeout(() => {
-        // Add more dummy data
-        const insertedItems = this.dummyData(this.items.length);
-        this.items.push(...insertedItems);
-        // Very important to update the end index here to be the page size at this stage
-        // If you are on page 0 with 50 items and loaded 50 more items, endIndex is set to 100
-        // Without this step, the 50 new items on DOM are not rendered and therefore we dont get their heights
-
-        // REMOVING this LINE will CRASH THE ENTIRE COMPONENT
-        // If you have a better idea, you better comment :)
-        this.endIndex =
-          Math.floor(this.items[this.items.length - 1].index / PAGE_SIZE) *
-            PAGE_SIZE +
-          PAGE_SIZE;
-        this.$nextTick(() => {
-          // Update the heights for the newly inserted rows
-          this.update(insertedItems);
-          // this.update2();
-          this.emitEnabled && this.emit();
-          this.loading = false;
-        });
-      }, 1);
-    }
+    }, 17)
   },
+
   watch: {
     /**
       We just need a start index and an end index based on our current scroll top to decide which subset of the items to render
@@ -601,15 +439,16 @@ Vue.component("virtual-list", {
       this.translateY = this.rowPositions[startNodeIndex];
     }
   },
+
   mounted() {
     this.init();
+
     // https://stackoverflow.com/questions/641857/javascript-window-resize-event/641874#641874
     var ro = new ResizeObserver(entries => {
       for (let entry of entries) {
         const cr = entry.contentRect;
-        console.log("Element:", entry.target, cr);
+        console.log('Element:', entry.target, cr);
         this.rootHeight = cr.height;
-        this.emitEnabled && this.emit();
         //         const children = this.$refs.spacer.children;
 
         //         for (let i = 0; i < children.length; i++) {
@@ -619,39 +458,18 @@ Vue.component("virtual-list", {
         //         }
       }
     });
+
     ro.observe(this.$el);
   },
+
   destroyed() {
-    this.$el.removeEventListener("scroll", this.handleScroll);
-    window.removeEventListener("keydown", this.handleKeyDown);
-    this.isMounted = false;
+    this.$el.removeEventListener('scroll', this.handleScroll);
   }
 });
 
 new Vue({
-  el: "#app",
+  el: '#app',
   data() {
     return { store: {} };
-  },
-  mounted() {
-    for (let event of [
-      "scroll-top",
-      "viewport-height",
-      "heights",
-      "page-positions",
-      "translate-y",
-      "page-start-index",
-      "start-index",
-      "end-index",
-      "smallest-height",
-      "largest-height",
-      "root-height",
-      "row-positions",
-      "visible-items"
-    ]) {
-      bus.$on(event, value => {
-        Vue.set(this.store, event, value);
-      });
-    }
   }
 });
