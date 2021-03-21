@@ -8,24 +8,27 @@
     </div>
 
     <RecycleScroller
-      v-slot="{ item: { peer, msg } }"
+      v-slot="{ startIndex, endIndex }"
       ref="recycleScroller"
       :items="peersList"
       :itemHeight="66"
-      :getKey="(item) => item.peer.id"
 
       class="im_peers_wrap"
       :vclass="{ loading }"
       :lock="lockScroll"
       @scroll="onScroll"
     >
-      <MessagesPeer
-        :key="peer.id"
-        :peer="peer"
-        :msg="msg"
-        :activeChat="activeChat"
-        :nowDate="nowDate"
-      />
+      <template v-for="({ peer, msg }, index) of peersList" :key="peer.id">
+        <KeepAlive>
+          <MessagesPeer
+            v-if="index >= startIndex && (index <= endIndex || lockScroll)"
+            :peer="peer"
+            :msg="msg"
+            :activeChat="activeChat"
+            :nowDate="nowDate"
+          />
+        </KeepAlive>
+      </template>
     </RecycleScroller>
 
     <BottomMenu />
@@ -114,7 +117,7 @@ export default {
     });
 
     onBeforeRouteLeave(() => {
-      state.scrollTop = state.scrolly.viewport.scrollTop;
+      state.scrollTop = state.recycleScroller.$refs.scrollyRef.viewport.scrollTop;
     });
 
     onActivated(() => {
@@ -122,7 +125,7 @@ export default {
       store.state.lockNextScrollyRender = true;
 
       if (state.scrollTop) {
-        state.scrolly.viewport.scrollTop = state.scrollTop;
+        state.recycleScroller.$refs.scrollyRef.viewport.scrollTop = state.scrollTop;
       }
     });
 

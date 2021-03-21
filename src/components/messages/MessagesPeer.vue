@@ -212,6 +212,8 @@ export default {
   position: relative;
   border-radius: 8px;
   margin: 0 8px;
+  height: 66px;
+  contain: strict;
   cursor: pointer;
   transition: background-color .3s;
 }

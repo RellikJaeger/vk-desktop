@@ -1,23 +1,18 @@
 <template>
   <Scrolly
     ref="scrollyRef"
-    :lock="lock"
     @scroll="onScroll"
   >
     <div :style="{ height: totalHeight + 'px' }">
       <div :class="vclass" :style="{ transform: `translateY(${offsetY}px)` }">
-        <slot
-          v-for="item of visibleItems"
-          :key="getKey(item)"
-          :item="item"
-        />
+        <slot :startIndex="startIndex" :endIndex="endIndex || items.length - 1" />
       </div>
     </div>
   </Scrolly>
 </template>
 
 <script>
-import { reactive, toRefs, watch, onMounted } from 'vue';
+import { reactive, toRefs, watch, onMounted, onUnmounted } from 'vue';
 import { callWithDelay } from 'js/utils';
 
 import Scrolly from '../Scrolly.vue';
@@ -34,41 +29,46 @@ export default {
       required: true
     },
 
-    getKey: {
-      type: Function,
-      required: true
-    },
-
     renderAhread: {
       type: Number,
       default: 3
     },
 
-    vclass: {},
-    lock: {}
+    vclass: {}
   },
 
   components: {
     Scrolly
   },
 
-  setup(props, { emit }) {
+  setup(props) {
     const state = reactive({
       scrollyRef: null,
       totalHeight: null,
       viewportHeight: null,
       offsetY: 0,
-      visibleItems: []
+      startIndex: 0,
+      endIndex: 0
     });
 
     onMounted(() => {
       const { offsetHeight, scrollTop } = state.scrollyRef.viewport;
       state.totalHeight = offsetHeight;
       state.viewportHeight = offsetHeight;
-      doRender(scrollTop);
+      updateVisibleItems(scrollTop);
+
+      window.addEventListener('resize', onResize);
     });
 
-    function doRender(scrollTop) {
+    onUnmounted(() => {
+      window.removeEventListener('resize', onResize);
+    });
+
+    function onResize() {
+      state.viewportHeight = state.scrollyRef.viewport.offsetHeight;
+    }
+
+    function updateVisibleItems(scrollTop) {
       if (!props.items.length) {
         return;
       }
@@ -89,21 +89,20 @@ export default {
         );
 
         state.offsetY = startNode * props.itemHeight;
-        state.visibleItems = props.items.slice(startNode, startNode + visibleNodeCount);
+        state.startIndex = startNode;
+        state.endIndex = startNode + visibleNodeCount - 1;
       });
-    }, 17);
+    }, 0);
 
     function onScroll(event) {
-      emit('scroll', event);
-
-      doRender(event.viewport.scrollTop);
+      updateVisibleItems(event.viewport.scrollTop);
     }
 
     watch(
       () => props.items,
       () => {
         state.totalHeight = props.items.length * props.itemHeight;
-        doRender(state.scrollyRef.viewport.scrollTop);
+        updateVisibleItems(state.scrollyRef.viewport.scrollTop);
       }
     );
 
@@ -114,7 +113,3 @@ export default {
   }
 };
 </script>
-
-<style>
-
-</style>
