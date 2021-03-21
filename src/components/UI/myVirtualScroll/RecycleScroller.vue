@@ -1,6 +1,6 @@
 <template>
   <Scrolly
-    ref="scrollyRef"
+    ref="scrolly"
     @scroll="onScroll"
   >
     <div :style="{ height: totalHeight + 'px' }">
@@ -43,7 +43,8 @@ export default {
 
   setup(props) {
     const state = reactive({
-      scrollyRef: null,
+      scrolly: null,
+
       totalHeight: null,
       viewportHeight: null,
       offsetY: 0,
@@ -52,7 +53,7 @@ export default {
     });
 
     onMounted(() => {
-      const { offsetHeight, scrollTop } = state.scrollyRef.viewport;
+      const { offsetHeight, scrollTop } = state.scrolly.viewport;
       state.totalHeight = offsetHeight;
       state.viewportHeight = offsetHeight;
       updateVisibleItems(scrollTop);
@@ -65,7 +66,7 @@ export default {
     });
 
     function onResize() {
-      state.viewportHeight = state.scrollyRef.viewport.offsetHeight;
+      state.viewportHeight = state.scrolly.viewport.offsetHeight;
     }
 
     function updateVisibleItems(scrollTop) {
@@ -102,7 +103,7 @@ export default {
       () => props.items,
       () => {
         state.totalHeight = props.items.length * props.itemHeight;
-        updateVisibleItems(state.scrollyRef.viewport.scrollTop);
+        updateVisibleItems(state.scrolly.viewport.scrollTop);
       }
     );
 

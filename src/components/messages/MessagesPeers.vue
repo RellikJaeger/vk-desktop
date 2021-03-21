@@ -108,7 +108,7 @@ export default {
         state.loading = false;
         stop();
         await nextTick();
-        onScroll(state.recycleScroller.$refs.scrollyRef);
+        onScroll(state.recycleScroller.$refs.scrolly);
       });
 
       setInterval(() => {
@@ -117,7 +117,7 @@ export default {
     });
 
     onBeforeRouteLeave(() => {
-      state.scrollTop = state.recycleScroller.$refs.scrollyRef.viewport.scrollTop;
+      state.scrollTop = state.recycleScroller.$refs.scrolly.viewport.scrollTop;
     });
 
     onActivated(() => {
@@ -125,7 +125,7 @@ export default {
       store.state.lockNextScrollyRender = true;
 
       if (state.scrollTop) {
-        state.recycleScroller.$refs.scrollyRef.viewport.scrollTop = state.scrollTop;
+        state.recycleScroller.$refs.scrolly.viewport.scrollTop = state.scrollTop;
       }
     });
 
