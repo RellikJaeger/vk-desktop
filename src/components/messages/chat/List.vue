@@ -3,7 +3,7 @@
     <div :class="['im_top_time', { active: showTopTime }]">{{ topTime }}</div>
 
     <Scrolly
-      ref="scrollyRef"
+      ref="scrolly"
       class="messages_list_wrap"
       :vclass="['messages_list', { empty: !hasMessages }]"
       :lock="lockScroll"
@@ -85,8 +85,8 @@ export default {
 
   setup(props) {
     const state = reactive({
-      scrollyRef: null,
-      list: computed(() => state.scrollyRef && state.scrollyRef.viewport),
+      scrolly: null,
+      list: computed(() => state.scrolly && state.scrolly.viewport),
 
       loadingUp: false,
       loadingDown: false,
