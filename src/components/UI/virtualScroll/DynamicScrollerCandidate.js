@@ -1,6 +1,6 @@
-const PAGE_SIZE = 50;
+import { throttle } from 'js/utils';
 
-// https://dev.to/adamklein/build-your-own-virtual-scroll-part-ii-3j86
+const PAGE_SIZE = 50;
 
 const SearchMixin = {
   methods: {
@@ -13,8 +13,9 @@ const SearchMixin = {
 
       while (low < high) {
         mid = Math.floor((high + low) / 2);
+
         // Check if x is present at middle position
-        if (arr[mid] == x) {
+        if (arr[mid] === x) {
           break;
         } else if (arr[mid] > x) {
           high = mid - 1;
@@ -30,10 +31,11 @@ const SearchMixin = {
         : mid + 1;
     },
 
-    // Given a scroll top value, the map containing id of the each row as key and its vertical position from the top of
-    // the viewport in px and the number of total number of items available, find the index of the first node that is
-    // just above the current scroll top value or in simple words, find the index of the item that is just not seen by
-    // the user and is above the current scroll bar position
+    // Given a scroll top value, the map containing id of the each row as key and its vertical
+    // position from the top of the viewport in px and the number of total number of items
+    // available, find the index of the first node that is just above the current scroll top
+    // value or in simple words, find the index of the item that is just not seen by the user
+    // and is above the current scroll bar position
     findStartNode(scrollTop, nodePositions, itemCount) {
       let startRange = 0;
       let endRange = itemCount - 1;
@@ -51,12 +53,10 @@ const SearchMixin = {
         if (middle === startRange) {
           // edge case - start and end range are consecutive
           return endRange;
+        } if (nodePositions[middle] <= scrollTop) {
+          startRange = middle;
         } else {
-          if (nodePositions[middle] <= scrollTop) {
-            startRange = middle;
-          } else {
-            endRange = middle;
-          }
+          endRange = middle;
         }
       }
 
@@ -89,7 +89,8 @@ Vue.component('virtual-list', {
       rollingPageHeights: [],
       // Height of the smallest row
       smallestRowHeight: Number.MAX_SAFE_INTEGER,
-      // How much to shift the spacer vertically so that the scrollbar is not disturbed when hiding items
+      // How much to shift the spacer vertically so that the scrollbar is not disturbed when
+      // hiding items
       translateY: 0,
       // Height of the outermost div inside which all the list items are present
       rootHeight: 0,
@@ -120,20 +121,22 @@ Vue.component('virtual-list', {
       Row 2 of page 0 is 25 from top of page 0
       Row 3 of page 0 is 25 + 30 = 55 from top of page 0
       Row 4 of page 0 is 25 + 30 + 35 = 90 from top of page 0
-      If page 1 has 50 rows with heights 25 30 35 40, remember that page 1 itself is 2000px from top of the viewport
+      If page 1 has 50 rows with heights 25 30 35 40, remember that page 1 itself is 2000px from
+        top of the viewport
       Row 0 of page 1 is 0 + 2000 from top of page 1
       Row 1 of page 1 is 25 + 2000 = 2025 from top of page 1
       Row 2 of page 1 is 25 + 30 + 2000 = 2055 from top of page 1
       Row 3 of page 1 is 25 + 30 + 35 + 2000 = 2090 from top of page 1
-      We ll get a bunch of ever increasing numbers for a given page and we need to find out where the scroll top lies to identify the start index
+      We ll get a bunch of ever increasing numbers for a given page and we need to find out where
+        the scroll top lies to identify the start index
     */
     rowPositions() {
       const currentHeights = this.heights.slice(
         this.pageStartIndex * PAGE_SIZE,
         (this.pageStartIndex + 1) * PAGE_SIZE
       );
+      const displacements = [];
       let totalDisplacement = this.rollingPageHeights[this.pageStartIndex - 1] || 0;
-      let displacements = [];
 
       for (let i = 0; i < currentHeights.length; i++) {
         displacements.push(totalDisplacement);
@@ -158,43 +161,26 @@ Vue.component('virtual-list', {
     */
     spacerStyle() {
       return {
-        willChange: "auto",
-        transform: "translateY(" + this.translateY + "px)"
+        transform: `translateY(${this.translateY}px)`
       };
     },
 
     /**
       Set the height of the viewport
-      For a list where all items are of equal height, height of the viewport = number of items x height of each item
+      For a list where all items are of equal height, height of the viewport = number of items
+        x height of each item
       For a list where all items are of different height, it is the sum of height of each row
     */
     viewportStyle() {
       return {
-        height: this.viewportHeight + "px",
-        overflow: "hidden",
-        position: "relative",
-        willChange: "auto"
+        height: this.viewportHeight + 'px',
+        overflow: 'hidden',
+        position: 'relative'
       };
     }
   },
 
   methods: {
-    init() {
-      // Check if browser supports passive scroll and add scroll event listener
-      this.$el.addEventListener(
-        "scroll",
-        this.handleScroll,
-        { passive: true }
-      );
-
-      // After the items are added when they are rendered on DOM, update the heights and other properties
-      this.$nextTick(() => {
-        this.update(insertedItems);
-        // this.update2();
-        // Observe one or multiple elements
-      });
-    },
-
     scrollTo(index) {
       const pageStartIndex = Math.floor(index / PAGE_SIZE);
 
@@ -203,21 +189,30 @@ Vue.component('virtual-list', {
         (pageStartIndex + 1) * PAGE_SIZE
       );
       let totalDisplacement = this.rollingPageHeights[pageStartIndex - 1] || 0;
-      let displacements = [];
+      const displacements = [];
+
       for (let i = 0; i < currentHeights.length; i++) {
         displacements.push(totalDisplacement);
         totalDisplacement += currentHeights[i];
       }
+
       displacements.push(totalDisplacement);
-      // console.log(pageStartIndex, this.rollingPageHeights[pageStartIndex], this.heights.slice(pageStartIndex * PAGE_SIZE, (pageStartIndex + 1) * PAGE_SIZE), displacements[index]);
+
+      // console.log(
+      //   pageStartIndex,
+      //   this.rollingPageHeights[pageStartIndex],
+      //   this.heights.slice(pageStartIndex * PAGE_SIZE, (pageStartIndex + 1) * PAGE_SIZE),
+      //   displacements[index]
+      // );
+
       const top = displacements[index % PAGE_SIZE];
-      const isVisible =
-        top >= this.scrollTop && top <= this.scrollTop + this.$el.offsetHeight;
+      const isVisible = top >= this.scrollTop && top <= this.scrollTop + this.$el.offsetHeight;
+
       if (!isVisible) {
         this.$el.scrollTo({
           left: 0,
           top: displacements[index % PAGE_SIZE],
-          behavior: "smooth"
+          behavior: 'smooth'
         });
       }
     },
@@ -226,6 +221,7 @@ Vue.component('virtual-list', {
       for (let i = 0; i < insertedItems.length; i++) {
         // Get the id and index of the inserted items from the array
         const { id, index } = insertedItems[i];
+
         // Check if the id has been rendered on DOM and is available
         if (this.$refs[id] && this.$refs[id][0]) {
           // Get the scroll height and update the height of the item at index
@@ -238,44 +234,48 @@ Vue.component('virtual-list', {
           // For example, any item index from 0 to 40 would translate to page index 0
           // Any item with index 50 to 99 would translate to page index 1
           const pageIndex = Math.floor(index / PAGE_SIZE);
-          if (pageIndex === 0) {
-            if (!this.rollingPageHeights[pageIndex]) {
+
+          if (!this.rollingPageHeights[pageIndex]) {
+            if (pageIndex === 0) {
               this.rollingPageHeights[pageIndex] = 0;
-            }
-          } else {
-            if (!this.rollingPageHeights[pageIndex]) {
+            } else {
               this.rollingPageHeights[pageIndex] = this.rollingPageHeights[
                 pageIndex - 1
               ];
             }
           }
-          //Add the height of the row to the total height of all rows on the current page
+
+          // Add the height of the row to the total height of all rows on the current page
           this.rollingPageHeights[pageIndex] += height;
         }
         // else {
         //   console.log(id, "was not found");
         // }
       }
+
       this.rootHeight = this.$el.offsetHeight;
-      // Total height of the viewport is the sum of heights of all the rows on all the pages currently stored at the last index of page positions
-      // For our example with page 0 of 2000px and page 1 of 2500px, the rollingPageHeights array looks like [2000, 4500]
+      // Total height of the viewport is the sum of heights of all the rows on all the pages
+      //   currently stored at the last index of page positions
+      // For our example with page 0 of 2000px and page 1 of 2500px, the rollingPageHeights array
+      //   looks like [2000, 4500]
       // Viewport height = 4500px
       this.viewportHeight = this.rollingPageHeights[
         this.rollingPageHeights.length - 1
       ];
     },
 
-    handleScroll: _.throttle(function() {
-      const { scrollTop, offsetHeight, scrollHeight } = this.$el;
-      this.scrollTop = scrollTop;
+    handleScroll: throttle(function() {
+      this.scrollTop = this.$el.scrollTop;
     }, 17)
   },
 
   watch: {
     /**
-      We just need a start index and an end index based on our current scroll top to decide which subset of the items to render
+      We just need a start index and an end index based on our current scroll top to decide which
+        subset of the items to render
       We also need to take care that the translateY value is according to our start index
-      There are multiple ways of doing this, feel free to try any of the methods our or comment to suggest a better method if you know
+      There are multiple ways of doing this, feel free to try any of the methods our or comment to
+        suggest a better method if you know
       Let us again take the example of 2 pages 2000px and 2500px
       rollingPageHeights: [2000, 4500]
 
@@ -290,17 +290,21 @@ Vue.component('virtual-list', {
       One simple way is start index + 50
       At page 0 we translate by 0 px
       At page 1 we translate by height of page 0 = 2000px and so on
-      The change from 0 50 in the start index is rather abrupt and you can observe a flicker if going by this route
-      Also since the end index does not change, when you are at item 45, you can only see 5 more items because you ll have to scroll beyond 50 to see the next 50 items
+      The change from 0 50 in the start index is rather abrupt and you can observe a flicker if
+        going by this route
+      Also since the end index does not change, when you are at item 45, you can only see 5 more
+        items because you ll have to scroll beyond 50 to see the next 50 items
       If the height of the page is more than 50 items, we have a problem in this approach
       startIndex = pageStartIndex * PAGE_SIZE
       endIndex = startIndex + PAGE_SIZE
       translateY = rollingPageHeights[pageStartIndex - 1] || 0 (for the 0th page)
-      This method does NOTgive a smooth scrolling experience because when you reach the end of the page, blank space is seen until you scroll beyond and the next page is loaded
+      This method does NOT give a smooth scrolling experience because when you reach the end of
+        the page, blank space is seen until you scroll beyond and the next page is loaded
 
       Method 2
       Here we are talking about a different method that involves guesstimating startIndex
-      Take 10 rows of different heights and their respective displacements from the top of the current page
+      Take 10 rows of different heights and their respective displacements from the top of the
+        current page
       10px => 0
       20px => 0 + 10 = 10
       30px => 10 + 20 = 30
@@ -323,9 +327,12 @@ Vue.component('virtual-list', {
       startIndex = Math.floor(scrollTop / largest row height)
       startIndex = Math.floor(91 / 40) = 2
 
-      If you did a binary search, 91 lies between 60 and 100 so the row start index could be either 3 or 4 depending on how you round it
-      But we arrived at a number 2 quickly without doing any search didn't we? That is the beauty of this method, its a O(1) operation instead of binary search which is O(logN)
-      The end index can be obtained by doing the exact opposite, which is to take the scroll top and height of the root element and dividing that by the smallest number
+      If you did a binary search, 91 lies between 60 and 100 so the row start index could be
+        either 3 or 4 depending on how you round it
+      But we arrived at a number 2 quickly without doing any search didn't we? That is the beauty
+        of this method, its a O(1) operation instead of binary search which is O(logN)
+      The end index can be obtained by doing the exact opposite, which is to take the scroll top
+        and height of the root element and dividing that by the smallest number
       If the height of the root container is 100px and current scroll is the same
 
       endIndex = Math.floor((scrollTop + container height) / smallest row height)
@@ -336,12 +343,17 @@ Vue.component('virtual-list', {
       endIndex = startIndex + Math.floor(container height / smallest row height)
       = 2 + Math.floor(100 / 10) = 12
 
-      As the scroll top is 91 and the total height of the visible area is 100 px, the user can see upto 191 px on screen
-      Any of the above ways of calculating the end index should give you an end index that lies well beyond the visible area
-      If you did a binary search to find where the end index lies, your value 191 lies between positions 7 and 8 depending on how you round it
+      As the scroll top is 91 and the total height of the visible area is 100 px, the user can see
+        upto 191 px on screen
+      Any of the above ways of calculating the end index should give you an end index that lies
+        well beyond the visible area
+      If you did a binary search to find where the end index lies, your value 191 lies between
+        positions 7 and 8 depending on how you round it
       But we did it in O(1) time without a binary search
-      Now all we need to do is apply the translate properly, our start index is 2, so we are starting at the row at index 2 which is 30px tall, translate is 10 + 20 = 30px
-      The only problem is that as we scroll down and down, the start and end index starts getting further and further apart and more and more items are rendered on the DOM
+      Now all we need to do is apply the translate properly, our start index is 2, so we are
+        starting at the row at index 2 which is 30px tall, translate is 10 + 20 = 30px
+      The only problem is that as we scroll down and down, the start and end index starts getting
+        further and further apart and more and more items are rendered on the DOM
       translateY = rowPositions[startIndex]
 
       The solution to this problem is to adjust the start and end index on each
@@ -395,12 +407,17 @@ Vue.component('virtual-list', {
 
       With adjustment
 
-      We know that the 1st 275px is of page 0 and has  10 rows, all we need to do is remove this from the current calculation
+      We know that the 1st 275px is of page 0 and has  10 rows, all we need to do is remove this
+        from the current calculation
 
-      startIndex = total number of rows before current page + Math.floor((scrollTop - total height of all rows before current page) / largest row height)
+      startIndex = total number of rows before current page +
+        Math.floor((scrollTop - total height of all rows before current page) / largest row height)
       startIndex = 10 rows of page 0 + Math.floor((325 - 275 px of page 0) / 40)	= 11
 
-      endIndex = total number of rows before current page + Math.floor((scrollTop + container height - total height of all rows before current page) / smallest row height)
+      endIndex = total number of rows before current page + Math.floor(
+        (scrollTop + container height - total height of all rows before current page)
+        \/ smallest row height
+      )
       endIndex = 10 + Math.floor((325 + 100 - 275) / 10) = 25
 
       If we use the previous technique of calculating the endIndex directly from the startIndex
@@ -408,16 +425,19 @@ Vue.component('virtual-list', {
       endIndex = startIndex + Math.floor(container height / smallest row height)
       endIndex = 11 + Math.floor(100 / 10) = 21
 
-      The translate in this method is not applied properly and what I observed is the spacer keeps moving higher and higher and we see an increasing amount of blank space as we scroll down till the entire page is blank
+      The translate in this method is not applied properly and what I observed is the spacer keeps
+        moving higher and higher and we see an increasing amount of blank space as we scroll down
+        till the entire page is blank
 
       Method 3
       Do a binary search for the start index
-      The end index can be calculated either via binary search or from the start index using the formula below
+      The end index can be calculated either via binary search or from the start index using
+        the formula below
       endIndex = startIndex + Math.floor(container height / smallest row height)
 
       This is the method currently USED
     */
-    scrollTop(newValue, oldValue) {
+    scrollTop() {
       this.pageStartIndex = this.binarySearch(
         this.rollingPageHeights,
         this.scrollTop
@@ -441,28 +461,28 @@ Vue.component('virtual-list', {
   },
 
   mounted() {
-    this.init();
+    this.$el.addEventListener('scroll', this.handleScroll, { passive: true });
 
     // https://stackoverflow.com/questions/641857/javascript-window-resize-event/641874#641874
-    var ro = new ResizeObserver(entries => {
-      for (let entry of entries) {
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
         const cr = entry.contentRect;
         console.log('Element:', entry.target, cr);
         this.rootHeight = cr.height;
-        //         const children = this.$refs.spacer.children;
-
-        //         for (let i = 0; i < children.length; i++) {
-        //           const { id, scrollHeight } = children[i];
-        //           const index = children[i].getAttribute("data-index");
-        //           console.log(index, scrollHeight, this.heights[index]);
-        //         }
+        // const children = this.$refs.spacer.children;
+        //
+        // for (let i = 0; i < children.length; i++) {
+        //   const { id, scrollHeight } = children[i];
+        //   const index = children[i].getAttribute("data-index");
+        //   console.log(index, scrollHeight, this.heights[index]);
+        // }
       }
     });
 
-    ro.observe(this.$el);
+    resizeObserver.observe(this.$el);
   },
 
-  destroyed() {
+  unmounted() {
     this.$el.removeEventListener('scroll', this.handleScroll);
   }
 });
@@ -470,6 +490,8 @@ Vue.component('virtual-list', {
 new Vue({
   el: '#app',
   data() {
-    return { store: {} };
+    return {
+      store: {}
+    };
   }
 });
