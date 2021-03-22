@@ -1,22 +1,21 @@
 <template>
-  <div id="root" ref="root">
-    <div id="viewport" ref="viewport" :style="viewportStyle">
-      <div id="spacer" ref="spacer" :style="spacerStyle">
-        <div
-          v-for="item of visibleItems"
-          :key="item.id"
-          :ref="item.id"
-          class="list-item"
-        >
-          <div>{{ item.index + ' ' + item.value }}</div>
-        </div>
+  <Scrolly
+    ref="scrolly"
+    :lock="lockScroll"
+    @scroll="onScroll"
+  >
+    <div :style="{ height: viewportHeight + 'px' }">
+      <div ref="spacer" :class="vclass" :style="{ transform: `translateY(${translateY}px)` }">
+        <slot :startIndex="startIndex" :endIndex="endIndex" />
       </div>
     </div>
-  </div>
+  </Scrolly>
 </template>
 
 <script>
 import { throttle } from 'js/utils';
+
+import Scrolly from '../Scrolly.vue';
 
 const PAGE_SIZE = 50;
 
@@ -75,36 +74,44 @@ function findStartNode(scrollTop, nodePositions, itemCount) {
 }
 
 export default {
-  data() {
+  props: ['items', 'lockScroll', 'vclass'],
+
+  components: {
+    Scrolly
+  },
+
+  setup() {
     return {
-      // Index of the starting page, each page has PAGE_SIZE items
-      pageStartIndex: 0,
-      // Index of the first list item on DOM
-      startIndex: 0,
-      endIndex: PAGE_SIZE,
-      // List of all the items out of which a subset will be rendered on DOM
-      items: [],
-      // Height of each row
-      heights: [],
-      // Total height per page
-      // On page 0 , lets say all PAGE_SIZE rows add up to 2000
-      // On page 1, lets say all PAGE_SIZE rows add up to 2500, then
-      // rollingPageHeights: [2000, 4500]
-      // page 1 = page 0 height of PAGE_SIZE items + page 1 height of PAGE_SIZE items
-      rollingPageHeights: [],
-      // Height of the smallest row
-      smallestRowHeight: Number.MAX_SAFE_INTEGER,
-      // How much to shift the spacer vertically so that the scrollbar is not disturbed when
-      // hiding items
-      translateY: 0,
-      // Height of the outermost div inside which all the list items are present
-      rootHeight: 0,
-      // Total height of all the rows of all the pages
-      viewportHeight: 0,
-      // Current scroll position
-      scrollTop: 0
+      scrolly: null
     };
   },
+
+  data: () => ({
+    // Index of the starting page, each page has PAGE_SIZE items
+    pageStartIndex: 0,
+    // Index of the first list item on DOM
+    startIndex: 0,
+    endIndex: PAGE_SIZE,
+    // Height of each row
+    heights: [],
+    // Total height per page
+    // On page 0 , lets say all PAGE_SIZE rows add up to 2000
+    // On page 1, lets say all PAGE_SIZE rows add up to 2500, then
+    // rollingPageHeights: [2000, 4500]
+    // page 1 = page 0 height of PAGE_SIZE items + page 1 height of PAGE_SIZE items
+    rollingPageHeights: [],
+    // Height of the smallest row
+    smallestRowHeight: Number.MAX_SAFE_INTEGER,
+    // How much to shift the spacer vertically so that the scrollbar is not disturbed when
+    // hiding items
+    translateY: 0,
+    // Height of the outermost div inside which all the list items are present
+    rootHeight: 0,
+    // Total height of all the rows of all the pages
+    viewportHeight: 0,
+    // Current scroll position
+    scrollTop: 0
+  }),
 
   computed: {
     /**
@@ -158,30 +165,6 @@ export default {
     */
     visibleItems() {
       return this.items.slice(this.startIndex, this.endIndex);
-    },
-
-    /**
-      Translate the spacer verticaly to keep the scrollbar intact
-      We only show N items at a time so the scrollbar would get affected if we dont translate
-    */
-    spacerStyle() {
-      return {
-        transform: `translateY(${this.translateY}px)`
-      };
-    },
-
-    /**
-      Set the height of the viewport
-      For a list where all items are of equal height, height of the viewport = number of items
-        x height of each item
-      For a list where all items are of different height, it is the sum of height of each row
-    */
-    viewportStyle() {
-      return {
-        height: this.viewportHeight + 'px',
-        overflow: 'hidden',
-        position: 'relative'
-      };
     }
   },
 
@@ -222,40 +205,34 @@ export default {
       }
     },
 
-    update(insertedItems) {
-      for (let i = 0; i < insertedItems.length; i++) {
-        // Get the id and index of the inserted items from the array
-        const { id, index } = insertedItems[i];
+    update() {
+      const { children } = this.$refs.spacer;
 
-        // Check if the id has been rendered on DOM and is available
-        if (this.$refs[id] && this.$refs[id][0]) {
-          // Get the scroll height and update the height of the item at index
-          const height = this.$refs[id][0].scrollHeight;
-          this.heights[index] = height;
-          // Update the smallest row height
-          this.smallestRowHeight =
-            height < this.smallestRowHeight ? height : this.smallestRowHeight;
-          // Given an item index, compute the page index
-          // For example, any item index from 0 to 40 would translate to page index 0
-          // Any item with index 50 to 99 would translate to page index 1
-          const pageIndex = Math.floor(index / PAGE_SIZE);
+      for (const index in [].slice.call(children)) {
+        const child = children[index];
 
-          if (!this.rollingPageHeights[pageIndex]) {
-            if (pageIndex === 0) {
-              this.rollingPageHeights[pageIndex] = 0;
-            } else {
-              this.rollingPageHeights[pageIndex] = this.rollingPageHeights[
-                pageIndex - 1
-              ];
-            }
+        // Get the scroll height and update the height of the item at index
+        const height = child.scrollHeight;
+        this.heights[index] = height;
+        // Update the smallest row height
+        this.smallestRowHeight = height < this.smallestRowHeight
+          ? height
+          : this.smallestRowHeight;
+        // Given an item index, compute the page index
+        // For example, any item index from 0 to 40 would translate to page index 0
+        // Any item with index 50 to 99 would translate to page index 1
+        const pageIndex = Math.floor(index / PAGE_SIZE);
+
+        if (!this.rollingPageHeights[pageIndex]) {
+          if (pageIndex === 0) {
+            this.rollingPageHeights[pageIndex] = 0;
+          } else {
+            this.rollingPageHeights[pageIndex] = this.rollingPageHeights[pageIndex - 1];
           }
-
-          // Add the height of the row to the total height of all rows on the current page
-          this.rollingPageHeights[pageIndex] += height;
         }
-        // else {
-        //   console.log(id, "was not found");
-        // }
+
+        // Add the height of the row to the total height of all rows on the current page
+        this.rollingPageHeights[pageIndex] += height;
       }
 
       this.rootHeight = this.$el.offsetHeight;
@@ -269,12 +246,16 @@ export default {
       ];
     },
 
-    handleScroll: throttle(function() {
+    onScroll: throttle(function() {
       this.scrollTop = this.$el.scrollTop;
     }, 17)
   },
 
   watch: {
+    items() {
+      this.update();
+    },
+
     /**
       We just need a start index and an end index based on our current scroll top to decide which
         subset of the items to render
@@ -466,29 +447,16 @@ export default {
   },
 
   mounted() {
-    this.$el.addEventListener('scroll', this.handleScroll, { passive: true });
-
     // https://stackoverflow.com/questions/641857/javascript-window-resize-event/641874#641874
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const cr = entry.contentRect;
         console.log('Element:', entry.target, cr);
         this.rootHeight = cr.height;
-        // const children = this.$refs.spacer.children;
-        //
-        // for (let i = 0; i < children.length; i++) {
-        //   const { id, scrollHeight } = children[i];
-        //   const index = children[i].getAttribute("data-index");
-        //   console.log(index, scrollHeight, this.heights[index]);
-        // }
       }
     });
 
     resizeObserver.observe(this.$el);
-  },
-
-  unmounted() {
-    this.$el.removeEventListener('scroll', this.handleScroll);
   }
 };
 </script>

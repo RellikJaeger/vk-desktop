@@ -1,20 +1,49 @@
+<template>
+  <DynamicScroller
+    v-slot="{ startIndex, endIndex }"
+    ref="scroller"
+    :items="children"
+    :lockScroll="lockScroll"
+    :vclass="vclass"
+  >
+    <slot name="before" />
+
+    <template v-for="(child, index) of children" :key="'p' + child.key">
+      <KeepAlive>
+        <component
+          :is="child"
+          v-if="index >= startIndex && (index <= endIndex || lockScroll)"
+          :key="child.key"
+        />
+      </KeepAlive>
+    </template>
+
+    <slot name="after" />
+  </DynamicScroller>
+</template>
+
 <script>
-import { h, Fragment } from 'vue';
+import { h, computed } from 'vue';
 import { capitalize } from 'js/utils';
 import { getDay } from 'js/date';
 import { isSameDay } from 'js/date/utils';
 import store from 'js/store';
+import getTranslate from 'js/getTranslate';
 
 import MessagesGroup from './MessagesGroup.vue';
 import Carousel from './Carousel.vue';
 import ServiceMessage from '../ServiceMessage.vue';
 import Icon from '../../UI/Icon.vue';
+import { DynamicScroller } from '../../UI/virtualScroll';
 
 export default {
-  props: ['peer_id', 'peer', 'list', 'startInRead', 'isCustomView'],
+  props: ['peer_id', 'peer', 'list', 'startInRead', 'isCustomView', 'vclass', 'lockScroll'],
 
-  render(props) {
-    const children = [];
+  components: {
+    DynamicScroller
+  },
+
+  setup(props) {
     let activeGroup = [];
     let expiredMessages = [];
 
@@ -34,7 +63,7 @@ export default {
       return !msg.out && !isPrevUnread && isThisUnread;
     }
 
-    function closeGroup() {
+    function closeGroup(children) {
       if (activeGroup.length) {
         children.push(
           h(MessagesGroup, {
@@ -50,13 +79,14 @@ export default {
       }
     }
 
-    const addExpiredMark = (isUnread) => {
-      closeGroup();
+    const addExpiredMark = (children, isUnread) => {
+      closeGroup(children);
 
       children.push(
         h(
           'div',
           {
+            key: 'expired' + expiredMessages.length,
             // isUnread добавляется, если не прочтено минимум одно сообщение
             class: ['message_expired_wrap', { isUnread }],
             // Для прочтения сообщений
@@ -65,7 +95,7 @@ export default {
           [
             h('div', { class: 'message_expired' }, [
               h(Icon, { name: 'bomb', color: 'var(--icon-gray)' }),
-              this.l('im_messages_expired', [expiredMessages.length], expiredMessages.length)
+              getTranslate('im_messages_expired', [expiredMessages.length], expiredMessages.length)
             ])
           ]
         )
@@ -74,108 +104,124 @@ export default {
       expiredMessages = [];
     };
 
-    for (let i = 0; i < props.list.length; i++) {
-      const prevMsg = props.list[i - 1];
-      const msg = props.list[i];
-      const nextMsg = props.list[i + 1];
-      const messageDate = getMessageDate(msg, prevMsg);
-      const isStartUnread = checkIsStartUnread(msg, prevMsg);
-      const isPrevUnread = prevMsg && prevMsg.id > props.peer.in_read;
-      const isUnread = msg.id > props.peer.in_read;
+    const computedChildren = computed(() => {
+      const children = [];
 
-      if (expiredMessages.length && (messageDate || msg.action || isStartUnread)) {
-        addExpiredMark(isPrevUnread);
-      }
+      for (let i = 0; i < props.list.length; i++) {
+        const prevMsg = props.list[i - 1];
+        const msg = props.list[i];
+        const nextMsg = props.list[i + 1];
+        const messageDate = getMessageDate(msg, prevMsg);
+        const isStartUnread = checkIsStartUnread(msg, prevMsg);
+        const isPrevUnread = prevMsg && prevMsg.id > props.peer.in_read;
+        const isUnread = msg.id > props.peer.in_read;
 
-      if (messageDate) {
-        closeGroup();
+        if (expiredMessages.length && (messageDate || msg.action || isStartUnread)) {
+          addExpiredMark(children, isPrevUnread);
+        }
 
-        children.push(
-          h('div', { class: 'message_date' }, messageDate)
-        );
-      }
-
-      if (isStartUnread) {
-        closeGroup();
-
-        children.push(
-          h('div', { class: 'message_unreaded_messages' }, [
-            h('span', this.l('im_unread_messages'))
-          ])
-        );
-      }
-
-      if (msg.action) {
-        closeGroup();
-
-        children.push(
-          h('div', {
-            class: ['im_service_message', { isUnread }],
-            'data-id': msg.id
-          }, [
-            h(ServiceMessage, {
-              msg,
-              author: store.state.profiles[msg.from],
-              peer_id: props.peer_id,
-              isFull: true
-            })
-          ])
-        );
-
-        continue;
-      }
-
-      if (prevMsg && prevMsg.from !== msg.from) {
-        closeGroup();
-      }
-
-      if (!msg.isExpired) {
-        activeGroup.push(msg);
-
-        if (msg.template && msg.template.type === 'carousel') {
-          closeGroup();
+        if (messageDate) {
+          closeGroup(children);
 
           children.push(
-            h(Carousel, {
-              peer_id: props.peer_id,
-              msg
-            })
+            h('div', {
+              key: messageDate,
+              class: 'message_date'
+            }, messageDate)
           );
         }
-      } else {
-        expiredMessages.push(msg.id);
 
-        if (!(nextMsg && nextMsg.isExpired)) {
-          addExpiredMark(isUnread);
+        if (isStartUnread) {
+          closeGroup(children);
+
+          children.push(
+            h('div', { key: 'unread', class: 'message_unread_messages' }, [
+              h('span', getTranslate('im_unread_messages'))
+            ])
+          );
+        }
+
+        if (msg.action) {
+          closeGroup(children);
+
+          children.push(
+            h('div', {
+              key: msg.id,
+              class: ['im_service_message', { isUnread }],
+              'data-id': msg.id
+            }, [
+              h(ServiceMessage, {
+                msg,
+                author: store.state.profiles[msg.from],
+                peer_id: props.peer_id,
+                isFull: true
+              })
+            ])
+          );
+
+          continue;
+        }
+
+        if (prevMsg && prevMsg.from !== msg.from) {
+          closeGroup(children);
+        }
+
+        if (!msg.isExpired) {
+          // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+          activeGroup.push(msg);
+
+          if (msg.template && msg.template.type === 'carousel') {
+            closeGroup(children);
+
+            children.push(
+              h(Carousel, {
+                key: 'carousel' + msg.id,
+                peer_id: props.peer_id,
+                msg
+              })
+            );
+          }
+        } else {
+          // eslint-disable-next-line vue/no-side-effects-in-computed-properties
+          expiredMessages.push(msg.id);
+
+          if (!(nextMsg && nextMsg.isExpired)) {
+            addExpiredMark(children, isUnread);
+          }
         }
       }
-    }
 
-    closeGroup();
+      closeGroup(children);
 
-    return h(Fragment, children);
+      return children;
+    });
+
+    return {
+      scroller: null,
+      children: computedChildren
+    };
   }
 };
 </script>
 
 <style>
-.message_date, .message_unreaded_messages {
+.message_date, .message_unread_messages {
   text-align: center;
   margin: 10px 0 8px 0;
   color: var(--text-dark-steel-gray);
 }
 
-.message_unreaded_messages {
+.message_unread_messages {
   position: relative;
 }
 
-.message_unreaded_messages span {
+.message_unread_messages span {
   position: relative;
   background: var(--background);
   padding: 0 10px;
 }
 
-.message_unreaded_messages::before {
+.message_unread_messages::before {
   content: '';
   position: absolute;
   top: 50%;

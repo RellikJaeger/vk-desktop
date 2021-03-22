@@ -2,37 +2,39 @@
   <div class="messages_list_viewport">
     <div :class="['im_top_time', { active: showTopTime }]">{{ topTime }}</div>
 
-    <Scrolly
-      ref="scrolly"
+    <MessagesList
+      ref="messagesList"
+      :peer_id="peer_id"
+      :peer="peer"
+      :list="messagesWithLoading"
+      :startInRead="startInRead"
+
       class="messages_list_wrap"
       :vclass="['messages_list', { empty: !hasMessages }]"
-      :lock="lockScroll"
+      :lockScroll="lockScroll"
       @scroll="onScroll"
     >
-      <div v-if="hasMessages" class="messages_empty_block"></div>
-      <div v-if="loadingUp" class="loading"></div>
+      <template #before>
+        <div v-if="hasMessages" class="messages_empty_block"></div>
+        <div v-if="loadingUp" class="loading"></div>
+      </template>
 
-      <MessagesList
-        :peer_id="peer_id"
-        :peer="peer"
-        :list="messagesWithLoading"
-        :startInRead="startInRead"
-      />
+      <template #after>
+        <div v-if="loadingDown" class="loading"></div>
 
-      <div v-if="loadingDown" class="loading"></div>
-
-      <div v-if="!hasMessages && !loadingUp && !loadingDown" class="messages_empty_dialog">
-        <template v-if="peer && peer.isCasperChat && peer.isWriteAllowed">
-          <Icon name="ghost_outline" color="var(--icon-gray)" />
-          {{ l('im_empty_casper_dialog', 0) }}<br>
-          {{ l('im_empty_casper_dialog', 1) }}
-        </template>
-        <template v-else>
-          <img src="~assets/placeholder_empty_messages.webp">
-          {{ l('im_empty_dialog') }}
-        </template>
-      </div>
-    </Scrolly>
+        <div v-if="!hasMessages && !loadingUp && !loadingDown" class="messages_empty_dialog">
+          <template v-if="peer && peer.isCasperChat && peer.isWriteAllowed">
+            <Icon name="ghost_outline" color="var(--icon-gray)" />
+            {{ l('im_empty_casper_dialog', 0) }}<br>
+            {{ l('im_empty_casper_dialog', 1) }}
+          </template>
+          <template v-else>
+            <img src="~assets/placeholder_empty_messages.webp">
+            {{ l('im_empty_dialog') }}
+          </template>
+        </div>
+      </template>
+    </MessagesList>
 
     <div
       :class="['im_scroll_mention_btn', { hidden: !showEndBtn || !peer || !peer.mentions.length }]"
@@ -71,7 +73,6 @@ import store from 'js/store';
 import router from 'js/router';
 
 import Icon from '../../UI/Icon.vue';
-import Scrolly from '../../UI/Scrolly.vue';
 import MessagesList from './MessagesList.vue';
 
 export default {
@@ -79,14 +80,13 @@ export default {
 
   components: {
     Icon,
-    Scrolly,
     MessagesList
   },
 
   setup(props) {
     const state = reactive({
-      scrolly: null,
-      list: computed(() => state.scrolly && state.scrolly.viewport),
+      messagesList: null,
+      list: computed(() => (state.messagesList && state.messagesList.scroller.scrolly.viewport)),
 
       loadingUp: false,
       loadingDown: false,
@@ -174,7 +174,7 @@ export default {
         state.savedPositionBeforeClose = null;
       }
 
-      const unread = state.list.querySelector('.message_unreaded_messages');
+      const unread = state.list.querySelector('.message_unread_messages');
 
       if (state.isScrolledDownOnClose && !state.isUnreadOnClose && unread) {
         // Спускаемся на половину viewport ниже, чтобы плашка
@@ -469,7 +469,7 @@ export default {
         }
       });
 
-      const unreadMessages = state.list.querySelector('.message_unreaded_messages');
+      const unreadMessages = state.list.querySelector('.message_unread_messages');
 
       if (unreadMessages) {
         state.list.scrollTop = unreadMessages.offsetTop - state.list.clientHeight / 2;
@@ -592,7 +592,7 @@ export default {
           mark: true
         });
       } else if (props.peer && props.peer.unread) {
-        const unread = state.list.querySelector('.message_unreaded_messages');
+        const unread = state.list.querySelector('.message_unread_messages');
 
         if (unread) {
           if (
