@@ -3,7 +3,7 @@
     v-slot="{ startIndex, endIndex }"
     ref="scroller"
     :items="children"
-    :lockScroll="lockScroll"
+    :lock="lockScroll"
     :vclass="vclass"
   >
     <slot name="before" />
@@ -12,8 +12,8 @@
       <KeepAlive>
         <component
           :is="child"
-          v-if="index >= startIndex && (index <= endIndex || lockScroll)"
-          :key="child.key"
+          :scrollerItem="true"
+          v-if="1 || index >= startIndex && (index <= endIndex || lockScroll)"
         />
       </KeepAlive>
     </template>

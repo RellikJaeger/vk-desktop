@@ -96,7 +96,7 @@ export default {
 
     function onHide() {
       intersectionObserver.removeCallback(onObserve);
-      intersectionObserver.observer.unobserve(state.transparent);
+      state.transparent && intersectionObserver.observer.unobserve(state.transparent);
 
       if (isHovered) {
         state.transparent.removeEventListener('mouseout', onMouseOut);

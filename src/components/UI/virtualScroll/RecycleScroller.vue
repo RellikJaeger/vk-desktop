@@ -12,7 +12,7 @@
 </template>
 
 <script>
-import { reactive, toRefs, watch, onMounted, onUnmounted } from 'vue';
+import { reactive, toRefs, watch, onMounted, onBeforeUnmount } from 'vue';
 import { callWithDelay } from 'js/utils';
 
 import Scrolly from '../Scrolly.vue';
@@ -54,19 +54,28 @@ export default {
 
     onMounted(() => {
       const { offsetHeight, scrollTop } = state.scrolly.viewport;
-      state.totalHeight = offsetHeight;
+
       state.viewportHeight = offsetHeight;
       updateVisibleItems(scrollTop);
 
-      window.addEventListener('resize', onResize);
+      state.resizeObserver = new ResizeObserver(
+        callWithDelay(onResize, 250)
+      );
+
+      state.resizeObserver.observe(state.scrolly.viewport, {
+        box: 'border-box'
+      });
     });
 
-    onUnmounted(() => {
-      window.removeEventListener('resize', onResize);
+    onBeforeUnmount(() => {
+      state.resizeObserver.disconnect();
     });
 
-    function onResize() {
-      state.viewportHeight = state.scrolly.viewport.offsetHeight;
+    function onResize([{ contentRect }]) {
+      // height = 0 при переходе в беседу в компактном режиме
+      if (contentRect.height) {
+        state.viewportHeight = contentRect.height;
+      }
     }
 
     function updateVisibleItems(scrollTop) {

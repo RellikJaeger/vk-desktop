@@ -12,14 +12,15 @@
       <div class="im_chat_viewer_title">{{ l('im_messages_view') }}</div>
     </div>
     <div class="im_chat_wrap">
-      <Scrolly class="messages_list_wrap" vclass="messages_list">
-        <MessagesList
-          :peer_id="peer_id"
-          :peer="peer"
-          :list="messages"
-          :isCustomView="true"
-        />
-      </Scrolly>
+      <MessagesList
+        :peer_id="peer_id"
+        :peer="peer"
+        :list="messages"
+        :isCustomView="true"
+
+        class="messages_list_wrap"
+        vclass="messages_list"
+      />
     </div>
   </div>
 </template>

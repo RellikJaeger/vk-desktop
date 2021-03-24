@@ -706,6 +706,7 @@ export default {
 }
 
 .messages_list.empty {
+  height: 100%;
   align-items: center;
   justify-content: center;
 }
